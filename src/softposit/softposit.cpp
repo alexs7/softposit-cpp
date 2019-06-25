@@ -10,12 +10,8 @@ namespace bloody{
   int numMatches(arma::mat assignMat);
 
   boost::optional< std::tuple<Pose_type, match_type> > softposit(
-    const std::vector<point2di_type>& imagePts,
-    const std::vector<point3d_type>& worldPts,
-    const Param_type& param,
-    const Pose_type& initpose,
-    boost::optional<const CamInfo_type&> maybe_caminfo)
-  {
+    const std::vector<point2di_type>& imagePts,const std::vector<point3d_type>& worldPts,
+    const Param_type& param,const Pose_type& initpose,boost::optional<const CamInfo_type&> maybe_caminfo){
 
     using namespace std;
 
@@ -41,21 +37,25 @@ namespace bloody{
     std::vector<point2d_type> _centeredImage(imagePts.size());
 
     CamInfo_type caminfo;
-    if (maybe_caminfo)
+    if (maybe_caminfo){
+      std::cout << "Passing camera parameters." << std::endl;
       caminfo = *maybe_caminfo;
-    else{
+    }else{
+      std::cout << "Not passing camera parameters." << std::endl;
       caminfo.focalLength = 1;
-      caminfo.center = point2di_type{0, 0};
+      caminfo.center = point2di_type{0, 0}; //principal point ?
     }
 
-    std::cout<<"init: "<<std::endl<<initpose.rot<<std::endl<<initpose.trans<<std::endl;
+    std::cout << "initial pose: "<< std::endl << initpose.rot << std::endl << initpose.trans << std::endl;
 
+    //centering pixels
     std::transform(imagePts.begin(), imagePts.end(),
                    _centeredImage.begin(),
-                   [&caminfo](const point2di_type & _pt){
-                     return point2d_type((point2d_type{double(_pt[0]), double(_pt[1])} - caminfo.center)/caminfo.focalLength);
+                   [&caminfo](const point2di_type & _pt){ //this function is applied
+                     return point2d_type((point2d_type{double(_pt[0]), double(_pt[1])} - caminfo.center) / caminfo.focalLength);
                    });
 
+    //(rows = _centeredImage.size(), cols = 2)
     arma::mat centeredImage = arma::zeros<arma::mat>(_centeredImage.size(),2);
 
     for (int j=0; j<centeredImage.n_cols; ++j)
@@ -65,24 +65,38 @@ namespace bloody{
       }
     }
 
-    std::cout<<"centered image :"<<centeredImage<<std::endl;
+    std::cout << "centered image (or centered points): " <<centeredImage << std::endl;
 
     arma::mat homogeneousWorldPts = arma::zeros<arma::mat>(worldPts.size(), 4).eval();
     for (int i=0; i<worldPts.size(); ++i)
     {
       homogeneousWorldPts.row(i) = arma::rowvec{worldPts[i][0], worldPts[i][1], worldPts[i][2],1};
     }
-    std::cout<<"begin to make world point homogeneous:" << homogeneousWorldPts <<std::endl;
+    std::cout << "begin to make world point homogeneous: " << homogeneousWorldPts << std::endl;
 
     auto pose = initpose;
 
-    arma::mat wk = homogeneousWorldPts * arma::vec4 {pose.rot(2,0)/pose.trans[2], pose.rot(2,1)/pose.trans[2], pose.rot(2,2)/pose.trans[2],1};
-    std::cout <<"wk"<<wk<<std::endl;
+    // pose.rot(2,:) = R_3
+    // pose.rot(1,:) = R_2
+    // pose.rot(0,:) = R_1
+    //uses the last row of the pose matrix
+    arma::mat wk = homogeneousWorldPts * arma::vec4 { pose.rot(2,0) / pose.trans[2],
+                                                      pose.rot(2,1) / pose.trans[2],
+                                                      pose.rot(2,2) / pose.trans[2],
+                                                      1};
+    std::cout << "wk:" << wk <<std::endl;
 
-    arma::vec4 r1T = {pose.rot(0,0)/pose.trans(2), pose.rot(0,1)/pose.trans(2), pose.rot(0,2)/pose.trans(2), pose.trans(0)/pose.trans(2)};
-    arma::vec4 r2T = {pose.rot(1,0)/pose.trans(2), pose.rot(1,1)/pose.trans(2), pose.rot(1,2)/pose.trans(2), pose.trans(1)/pose.trans(2)};
+    arma::vec4 r1T = { pose.rot(0,0)/pose.trans(2),
+                       pose.rot(0,1)/pose.trans(2),
+                       pose.rot(0,2)/pose.trans(2),
+                       pose.trans(0)/pose.trans(2)};
 
-    auto  betaCount = 0;
+    arma::vec4 r2T = { pose.rot(1,0)/pose.trans(2),
+                       pose.rot(1,1)/pose.trans(2),
+                       pose.rot(1,2)/pose.trans(2),
+                       pose.trans(1)/pose.trans(2)};
+
+    auto betaCount = 0;
     auto poseConverged = 0;
     auto assignConverged = false;
     auto foundPose = 0;
@@ -93,6 +107,7 @@ namespace bloody{
     auto imageOnes = arma::ones<arma::mat>(nbImagePts, 1);
 
     int debug_loop = 0;
+    // The pseud code loop from the paper
     while (beta < betaFinal && !assignConverged)
     {
       std::cout<<boost::format("debug loop: %1%") % (debug_loop++)<<std::endl;

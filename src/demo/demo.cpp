@@ -24,7 +24,7 @@ int main()
       441,
       329};
 
-  std::cout<<"load image points"<<std::endl;
+  std::cout<<"loading image points"<<std::endl;
   for (uint i=0u; i<raw_imagePts.size(); i+=2){
     imagePts.push_back(bloody::point2di_type{raw_imagePts[i], raw_imagePts[i+1]});
   }
@@ -50,13 +50,13 @@ int main()
       -0.7500
       };
 
-  std::cout<<"load world points"<<std::endl;
+  std::cout<<"loading world points"<<std::endl;
   for (uint i=0u; i<raw_worldPts.size(); i+=3){
     worldPts.push_back(bloody::point3d_type{raw_worldPts[i], raw_worldPts[i+1], raw_worldPts[i+2]});
   }
 
   bloody::Param_type param{ 2.0E-4, 10.0};
-  bloody::CamInfo_type caminfo{982.1f, bloody::point2di_type{376, 240}};
+  bloody::CamInfo_type caminfo{982.1f, bloody::point2di_type{376, 240}}; //second parameter, principal point ?
 
   bloody::Pose_type initpose;
 
