@@ -5,7 +5,7 @@ namespace bloody{
 
   using stat_info = arma::vec5;
   std::tuple<arma::umat, arma::mat> maxPosRatio(arma::mat assignMat);
-  arma::mat sinkhornSlack(arma::mat M);
+  // arma::mat sinkhornSlack(arma::mat M);
   arma::mat sinkhornImp(arma::mat M);
   int numMatches(arma::mat assignMat);
 
@@ -32,7 +32,7 @@ namespace bloody{
     auto minNbPts = std::min(nbImagePts, nbWorldPts);
     auto maxNbPts = nbImagePts+nbWorldPts - minNbPts;
 
-    auto scale = 1.0/(maxNbPts + 1);
+    auto scale = 1.0/(maxNbPts + 1); //gamma (γ) in the paper
 
     std::vector<point2d_type> _centeredImage(imagePts.size());
 
@@ -56,6 +56,7 @@ namespace bloody{
                    });
 
     //(rows = _centeredImage.size(), cols = 2)
+    //centeredImage is pixels not the whole image.
     arma::mat centeredImage = arma::zeros<arma::mat>(_centeredImage.size(),2);
 
     for (int j=0; j<centeredImage.n_cols; ++j)
@@ -65,7 +66,7 @@ namespace bloody{
       }
     }
 
-    std::cout << "centered image (or centered points): " <<centeredImage << std::endl;
+    std::cout << "centered image (or centered points): " << centeredImage << std::endl;
 
     arma::mat homogeneousWorldPts = arma::zeros<arma::mat>(worldPts.size(), 4).eval();
     for (int i=0; i<worldPts.size(); ++i)
@@ -107,64 +108,85 @@ namespace bloody{
     auto imageOnes = arma::ones<arma::mat>(nbImagePts, 1);
 
     int debug_loop = 0;
-    // The pseud code loop from the paper
+    // The pseudo code loop from the paper
     while (beta < betaFinal && !assignConverged)
     {
-      std::cout<<boost::format("debug loop: %1%") % (debug_loop++)<<std::endl;
+      // std::cout<<boost::format("debug loop: %1%") % (debug_loop++)<<std::endl;
+      // std::cout << "homogeneousWorldPts size: " << arma::size(homogeneousWorldPts) << std::endl; //6x4
+      // std::cout << "r1T size: " << arma::size(r1T) << std::endl; 4x1
+      // std::cout << "r2T size: " << arma::size(r2T) << std::endl; 4x1
 
       arma::mat projectedU = homogeneousWorldPts * r1T;
       arma::mat projectedV = homogeneousWorldPts * r2T;
 
-      arma::mat replicatedProjectedU = imageOnes * projectedU.t();
-      arma::mat replicatedProjectedV = imageOnes * projectedV.t();
+      // std::cout << "projectedU size: " << arma::size(projectedU) << std::endl; 6x1
+      // std::cout << "projectedU.t() size: " << arma::size(projectedU.t()) << std::endl; 1x6
+      // std::cout << "projectedV size: " << arma::size(projectedV) << std::endl; 6x1
+      // std::cout << "projectedV.t() size: " << arma::size(projectedV.t()) << std::endl; 1x6
+      // std::cout << "imageOnes size: " << arma::size(imageOnes) << std::endl; 5x1
 
-      std::cout<<"r1T, r2T used:"<<std::endl<<r1T<<std::endl<<r2T<<std::endl;
-      std::cout<<"projected uv:"<<std::endl<<projectedU<<std::endl<<projectedV<<std::endl;
-      std::cout<<"reprojected uv"<<std::endl;
-      std::cout<<arma::mat(replicatedProjectedU)<<std::endl<<arma::mat(replicatedProjectedV)<<std::endl;
+      arma::mat replicatedProjectedU = imageOnes * projectedU.t(); // 5x1 by 1x6
+      arma::mat replicatedProjectedV = imageOnes * projectedV.t(); // 5x1 by 1x6
 
-      std::cout<<"SOP"<<std::endl;
+      // std::cout << "replicatedProjectedU size: " << arma::size(replicatedProjectedU) << std::endl; 5x6
+      // std::cout << "replicatedProjectedV size: " << arma::size(replicatedProjectedV) << std::endl; 5x6
+
+      std::cout << "homogeneousWorldPts: " << homogeneousWorldPts << std::endl;
+      std::cout << "r1T, r2T used: " << std::endl << r1T << std::endl << r2T << std::endl;
+      std::cout << "projected uv: " << std::endl << projectedU << std::endl << projectedV << std::endl;
+      std::cout << "reprojected uv: " << std::endl;
+      std::cout << arma::mat(replicatedProjectedU) << std::endl << arma::mat(replicatedProjectedV) << std::endl;
+
+      std::cout << "SOP" << std::endl;
       auto wkxj = centeredImage.col(0) * wk.t();
       auto wkyj = centeredImage.col(1) * wk.t();
 
-      std::cout<<"wkxj, wkyj"<<std::endl;
-      std::cout<<wkxj<<std::endl<<wkyj<<std::endl;
+      std::cout << "wkxj, wkyj" << std::endl;
+      std::cout << wkxj << std::endl << wkyj << std::endl;
 
-      arma::mat distMat = caminfo.focalLength*caminfo.focalLength*(arma::square(replicatedProjectedU - wkxj) + arma::square (replicatedProjectedV - wkyj));
+      // replicatedProjectedU = Q_1 * P_k
+      // replicatedProjectedV = Q_2 * P_k
+      arma::mat distMat = caminfo.focalLength * caminfo.focalLength *
+                          (arma::square(replicatedProjectedU - wkxj) + arma::square(replicatedProjectedV - wkyj));
 
-      std::cout<<"dist mat:"<<std::endl<<distMat<<std::endl;
+      std::cout << "dist mat (squared ?): " << std::endl << distMat << std::endl;
 
-      assignMat(arma::span(0, nbImagePts-1), arma::span(0, nbWorldPts-1)) = scale*arma::exp(-beta*(distMat - alpha));
+      assignMat(arma::span(0, nbImagePts-1), arma::span(0, nbWorldPts-1)) = scale * arma::exp(-beta*(distMat - alpha));
+
       assignMat.col(nbWorldPts) = scale * arma::ones<arma::vec>(nbImagePts+1);
       assignMat.row(nbImagePts) = scale * arma::ones<arma::rowvec>(nbWorldPts+1);
-      std::cout<<"assign befor sinkhorn:"<<std::endl<<assignMat<<std::endl;
+
+      std::cout << assignMat.col(nbWorldPts) << std::endl;
+      std::cout << assignMat.row(nbImagePts) << std::endl;
+
+      std::cout << "assign man before sinkhorn: " << std::endl << assignMat << std::endl;
 
       assignMat = sinkhornImp (assignMat);    // My "improved" Sinkhorn.
       //assignMat = sinkhornSlack (assignMat);    // My "improved" Sinkhorn.
-      std::cout<<"after sinkhorn Slack:"<<std::endl<<assignMat<<std::endl;
+      std::cout << "after sinkhorn Slack: " << std::endl << assignMat <<std::endl;
 
       auto numMatchPts = numMatches(assignMat);
-      std::cout<<"num matches: "<<numMatchPts<<std::endl;
+      std::cout << "num matches: " << numMatchPts << std::endl;
 
       auto sumNonslack = arma::accu(assignMat.submat(0,0,nbImagePts-1,nbWorldPts-1));
-      std::cout<<"sum non slack: "<<sumNonslack<<std::endl;
+      std::cout << "sum non slack: " << sumNonslack << std::endl;
 
       arma::mat summedByColAssign = arma::sum(assignMat.submat(0, 0, nbImagePts-1, nbWorldPts-1));
-      arma::mat sumSkSkT = arma::zeros<arma::mat>(4, 4);
+      arma::mat sumSkSkT = arma::zeros<arma::mat>(4, 4); // L in paper
 
-      for(auto  k = 0; k<nbWorldPts; ++k){
+      for(auto k = 0; k<nbWorldPts; ++k){
         sumSkSkT = sumSkSkT + summedByColAssign(k) * homogeneousWorldPts.row(k).t() * homogeneousWorldPts.row(k);
       }
 
-      std::cout<<"check ill-condition"<<std::endl;
+      std::cout << "check ill-condition: " << std::endl;
 
       if (arma::cond(sumSkSkT) > 1e10){
         std::cout<<"sumSkSkT is ill-conditioned, termininating search."<<std::endl;
         return boost::none;
       }
 
-      arma::mat objectMat = arma::inv(sumSkSkT);                           // Inv(L), a 4x4 matrix.
-      poseConverged = 0;                              // Initialize for POSIT loop.
+      arma::mat objectMat = arma::inv(sumSkSkT); // Inv(L), a 4x4 matrix.
+      poseConverged = 0;                         // Initialize for POSIT loop.
       auto pose_iter_count = 0;
 
       // Save the previouse pose vectors for convergence checks.
@@ -262,44 +284,6 @@ namespace bloody{
     return make_tuple(pose, match_type());
   }
 
-
-  arma::mat sinkhornSlack(arma::mat M)
-  {
-    arma::mat normalizedMat ;
-    auto iMaxIterSinkhorn=60;  // In PAMI paper
-    auto fEpsilon2 = 0.001; // Used in termination of Sinkhorn Loop.
-
-    auto iNumSinkIter = 0;
-    int nbRows = M.n_rows;
-    int nbCols = M.n_cols;
-
-    auto fMdiffSum = fEpsilon2 + 1;
-
-    while(fabs(fMdiffSum) > fEpsilon2 && iNumSinkIter < iMaxIterSinkhorn){
-      auto Mprev = M; // % Save M from previous iteration to test for loop termination
-
-      // Col normalization (except outlier row - do not normalize col slacks against each other)
-      arma::rowvec McolSums = arma::sum(M); // Row vector.
-      McolSums(nbCols-1) = 1; // Don't normalize slack col terms against each other.
-      auto McolSumsRep = arma::ones<arma::vec>(nbRows) * McolSums ;
-      M = M / McolSumsRep;
-
-      // Row normalization (except outlier row - do not normalize col slacks against each other)
-      arma::colvec MrowSums = arma::sum(M, 1); // Column vector.
-      MrowSums(nbRows-1) = 1; // Don't normalize slack row terms against each other.
-      auto MrowSumsRep = MrowSums * arma::ones<arma::rowvec>(nbCols);
-      M = M / MrowSumsRep;
-
-      iNumSinkIter=iNumSinkIter+1;
-      fMdiffSum=arma::accu(arma::abs(M-Mprev));
-    }
-
-    normalizedMat = M;
-
-    return normalizedMat;
-  }
-
-
   int numMatches(arma::mat assignMat)
   {
     int num = 0;
@@ -316,8 +300,10 @@ namespace bloody{
 
       std::vector<arma::uword> other_cols;
       other_cols.reserve(assignMat.n_cols-1);
+
       for (int i=0; i<assignMat.n_cols; ++i)
         if (i!=k) other_cols.push_back(i);
+
       if (arma::all(arma::all(vmax > assignMat.submat(arma::uvec{imax},arma::uvec(other_cols)))))
         num = num + 1;              // This value is maximal in its row & column.
     }
@@ -337,11 +323,11 @@ namespace bloody{
 
     auto fMdiffSum = fEpsilon2 + 1;    // Set "difference" from last M matrix above the loop termination threshold
 
-// Get the positions and ratios to slack of the nonslack elements that are maximal in their row and column.
+    // Get the positions and ratios to slack of the nonslack elements that are maximal in their row and column.
     arma::umat posmax;
     arma::mat ratios;
     std::tie(posmax, ratios) = maxPosRatio(M);
-    std::cout<<"postmax, rations"<<posmax<<std::endl<<ratios<<std::endl;
+    std::cout << "postmax, rations " << posmax << std::endl << ratios << std::endl;
 
     while(fabs(fMdiffSum) > fEpsilon2 && iNumSinkIter < iMaxIterSinkhorn)
     {
@@ -397,7 +383,7 @@ namespace bloody{
 
       if (imax == nrows-1) continue;                       // Slack value is maximum in this column.
 
-// Check if the max value in the column is maximum within its row.
+      // Check if the max value in the column is maximum within its row.
       std::vector<arma::uword> other_cols;
       for (int i=0; i<assignMat.n_cols; ++i) if (i!=k) other_cols.push_back(i);
 
@@ -443,4 +429,40 @@ namespace bloody{
       auto maybe_result = softposit(imagePts, worldPts, param, initpose, boost::none);
     }
   }
+
+  // arma::mat sinkhornSlack(arma::mat M)
+  // {
+  //   arma::mat normalizedMat ;
+  //   auto iMaxIterSinkhorn=60;  // In PAMI paper
+  //   auto fEpsilon2 = 0.001; // Used in termination of Sinkhorn Loop.
+  //
+  //   auto iNumSinkIter = 0;
+  //   int nbRows = M.n_rows;
+  //   int nbCols = M.n_cols;
+  //
+  //   auto fMdiffSum = fEpsilon2 + 1;
+  //
+  //   while(fabs(fMdiffSum) > fEpsilon2 && iNumSinkIter < iMaxIterSinkhorn){
+  //     auto Mprev = M; // % Save M from previous iteration to test for loop termination
+  //
+  //     // Col normalization (except outlier row - do not normalize col slacks against each other)
+  //     arma::rowvec McolSums = arma::sum(M); // Row vector.
+  //     McolSums(nbCols-1) = 1; // Don't normalize slack col terms against each other.
+  //     auto McolSumsRep = arma::ones<arma::vec>(nbRows) * McolSums ;
+  //     M = M / McolSumsRep;
+  //
+  //     // Row normalization (except outlier row - do not normalize col slacks against each other)
+  //     arma::colvec MrowSums = arma::sum(M, 1); // Column vector.
+  //     MrowSums(nbRows-1) = 1; // Don't normalize slack row terms against each other.
+  //     auto MrowSumsRep = MrowSums * arma::ones<arma::rowvec>(nbCols);
+  //     M = M / MrowSumsRep;
+  //
+  //     iNumSinkIter=iNumSinkIter+1;
+  //     fMdiffSum=arma::accu(arma::abs(M-Mprev));
+  //   }
+  //
+  //   normalizedMat = M;
+  //
+  //   return normalizedMat;
+  // }
 }
