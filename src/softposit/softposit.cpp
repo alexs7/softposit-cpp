@@ -197,7 +197,8 @@ namespace bloody{
       arma::vec r1, r2, r3;
       double delta;
 
-    std:cout<<"begin converge loop"<<std::endl;
+      std:cout << "begin converge loop: " << std::endl;
+
       while (poseConverged == false & pose_iter_count < maxCount)
       {
 
