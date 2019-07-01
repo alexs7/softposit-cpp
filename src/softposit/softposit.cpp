@@ -38,15 +38,15 @@ namespace bloody{
 
     CamInfo_type caminfo;
     if (maybe_caminfo){
-      std::cout << "Passing camera parameters." << std::endl;
+      //std::cout << "Passing camera parameters." << std::endl;
       caminfo = *maybe_caminfo;
     }else{
-      std::cout << "Not passing camera parameters." << std::endl;
+      //std::cout << "Not passing camera parameters." << std::endl;
       caminfo.focalLength = 1;
       caminfo.center = point2di_type{0, 0}; //principal point ?
     }
 
-    std::cout << "initial pose: "<< std::endl << initpose.rot << std::endl << initpose.trans << std::endl;
+    //std::cout << "initial pose: "<< std::endl << initpose.rot << std::endl << initpose.trans << std::endl;
 
     //centering pixels
     std::transform(imagePts.begin(), imagePts.end(),
@@ -66,14 +66,14 @@ namespace bloody{
       }
     }
 
-    std::cout << "centered image (or centered points): " << centeredImage << std::endl;
+    //std::cout << "centered image (or centered points): " << centeredImage << std::endl;
 
     arma::mat homogeneousWorldPts = arma::zeros<arma::mat>(worldPts.size(), 4).eval();
     for (int i=0; i<worldPts.size(); ++i)
     {
       homogeneousWorldPts.row(i) = arma::rowvec{worldPts[i][0], worldPts[i][1], worldPts[i][2],1};
     }
-    std::cout << "begin to make world point homogeneous: " << homogeneousWorldPts << std::endl;
+    //std::cout << "begin to make world point homogeneous: " << homogeneousWorldPts << std::endl;
 
     auto pose = initpose;
 
@@ -85,7 +85,7 @@ namespace bloody{
                                                       pose.rot(2,1) / pose.trans[2],
                                                       pose.rot(2,2) / pose.trans[2],
                                                       1};
-    std::cout << "wk:" << wk <<std::endl;
+    //std::cout << "wk:" << wk <<std::endl;
 
     arma::vec4 r1T = { pose.rot(0,0)/pose.trans(2),
                        pose.rot(0,1)/pose.trans(2),
@@ -111,65 +111,65 @@ namespace bloody{
     // The pseudo code loop from the paper
     while (beta < betaFinal && !assignConverged)
     {
-      // std::cout<<boost::format("debug loop: %1%") % (debug_loop++)<<std::endl;
-      // std::cout << "homogeneousWorldPts size: " << arma::size(homogeneousWorldPts) << std::endl; //6x4
-      // std::cout << "r1T size: " << arma::size(r1T) << std::endl; 4x1
-      // std::cout << "r2T size: " << arma::size(r2T) << std::endl; 4x1
+      // //std::cout<<boost::format("debug loop: %1%") % (debug_loop++)<<std::endl;
+      // //std::cout << "homogeneousWorldPts size: " << arma::size(homogeneousWorldPts) << std::endl; //6x4
+      // //std::cout << "r1T size: " << arma::size(r1T) << std::endl; 4x1
+      // //std::cout << "r2T size: " << arma::size(r2T) << std::endl; 4x1
 
       arma::mat projectedU = homogeneousWorldPts * r1T;
       arma::mat projectedV = homogeneousWorldPts * r2T;
 
-      // std::cout << "projectedU size: " << arma::size(projectedU) << std::endl; 6x1
-      // std::cout << "projectedU.t() size: " << arma::size(projectedU.t()) << std::endl; 1x6
-      // std::cout << "projectedV size: " << arma::size(projectedV) << std::endl; 6x1
-      // std::cout << "projectedV.t() size: " << arma::size(projectedV.t()) << std::endl; 1x6
-      // std::cout << "imageOnes size: " << arma::size(imageOnes) << std::endl; 5x1
+      // //std::cout << "projectedU size: " << arma::size(projectedU) << std::endl; 6x1
+      // //std::cout << "projectedU.t() size: " << arma::size(projectedU.t()) << std::endl; 1x6
+      // //std::cout << "projectedV size: " << arma::size(projectedV) << std::endl; 6x1
+      // //std::cout << "projectedV.t() size: " << arma::size(projectedV.t()) << std::endl; 1x6
+      // //std::cout << "imageOnes size: " << arma::size(imageOnes) << std::endl; 5x1
 
       arma::mat replicatedProjectedU = imageOnes * projectedU.t(); // 5x1 by 1x6
       arma::mat replicatedProjectedV = imageOnes * projectedV.t(); // 5x1 by 1x6
 
-      // std::cout << "replicatedProjectedU size: " << arma::size(replicatedProjectedU) << std::endl; 5x6
-      // std::cout << "replicatedProjectedV size: " << arma::size(replicatedProjectedV) << std::endl; 5x6
+      // //std::cout << "replicatedProjectedU size: " << arma::size(replicatedProjectedU) << std::endl; 5x6
+      // //std::cout << "replicatedProjectedV size: " << arma::size(replicatedProjectedV) << std::endl; 5x6
 
-      std::cout << "homogeneousWorldPts: " << homogeneousWorldPts << std::endl;
-      std::cout << "r1T, r2T used: " << std::endl << r1T << std::endl << r2T << std::endl;
-      std::cout << "projected uv: " << std::endl << projectedU << std::endl << projectedV << std::endl;
-      std::cout << "reprojected uv: " << std::endl;
-      std::cout << arma::mat(replicatedProjectedU) << std::endl << arma::mat(replicatedProjectedV) << std::endl;
+      //std::cout << "homogeneousWorldPts: " << homogeneousWorldPts << std::endl;
+      //std::cout << "r1T, r2T used: " << std::endl << r1T << std::endl << r2T << std::endl;
+      //std::cout << "projected uv: " << std::endl << projectedU << std::endl << projectedV << std::endl;
+      //std::cout << "reprojected uv: " << std::endl;
+      //std::cout << arma::mat(replicatedProjectedU) << std::endl << arma::mat(replicatedProjectedV) << std::endl;
 
-      std::cout << "SOP" << std::endl;
+      //std::cout << "SOP" << std::endl;
       auto wkxj = centeredImage.col(0) * wk.t();
       auto wkyj = centeredImage.col(1) * wk.t();
 
-      std::cout << "wkxj, wkyj" << std::endl;
-      std::cout << wkxj << std::endl << wkyj << std::endl;
+      //std::cout << "wkxj, wkyj" << std::endl;
+      //std::cout << wkxj << std::endl << wkyj << std::endl;
 
       // replicatedProjectedU = Q_1 * P_k
       // replicatedProjectedV = Q_2 * P_k
       arma::mat distMat = caminfo.focalLength * caminfo.focalLength *
                           (arma::square(replicatedProjectedU - wkxj) + arma::square(replicatedProjectedV - wkyj));
 
-      std::cout << "dist mat (squared ?): " << std::endl << distMat << std::endl;
+      //std::cout << "dist mat (squared ?): " << std::endl << distMat << std::endl;
 
       assignMat(arma::span(0, nbImagePts-1), arma::span(0, nbWorldPts-1)) = scale * arma::exp(-beta*(distMat - alpha));
 
       assignMat.col(nbWorldPts) = scale * arma::ones<arma::vec>(nbImagePts+1);
       assignMat.row(nbImagePts) = scale * arma::ones<arma::rowvec>(nbWorldPts+1);
 
-      std::cout << assignMat.col(nbWorldPts) << std::endl;
-      std::cout << assignMat.row(nbImagePts) << std::endl;
+      //std::cout << assignMat.col(nbWorldPts) << std::endl;
+      //std::cout << assignMat.row(nbImagePts) << std::endl;
 
-      std::cout << "assign man before sinkhorn: " << std::endl << assignMat << std::endl;
+      //std::cout << "assign man before sinkhorn: " << std::endl << assignMat << std::endl;
 
       assignMat = sinkhornImp (assignMat);    // My "improved" Sinkhorn.
       //assignMat = sinkhornSlack (assignMat);    // My "improved" Sinkhorn.
-      std::cout << "after sinkhorn Slack: " << std::endl << assignMat <<std::endl;
+      //std::cout << "after sinkhorn Slack: " << std::endl << assignMat <<std::endl;
 
       auto numMatchPts = numMatches(assignMat);
-      std::cout << "num matches: " << numMatchPts << std::endl;
+      //std::cout << "num matches: " << numMatchPts << std::endl;
 
       auto sumNonslack = arma::accu(assignMat.submat(0,0,nbImagePts-1,nbWorldPts-1));
-      std::cout << "sum non slack: " << sumNonslack << std::endl;
+      //std::cout << "sum non slack: " << sumNonslack << std::endl;
 
       arma::mat summedByColAssign = arma::sum(assignMat.submat(0, 0, nbImagePts-1, nbWorldPts-1));
       arma::mat sumSkSkT = arma::zeros<arma::mat>(4, 4); // L in paper
@@ -178,10 +178,10 @@ namespace bloody{
         sumSkSkT = sumSkSkT + summedByColAssign(k) * homogeneousWorldPts.row(k).t() * homogeneousWorldPts.row(k);
       }
 
-      std::cout << "check ill-condition: " << std::endl;
+      //std::cout << "check ill-condition: " << std::endl;
 
       if (arma::cond(sumSkSkT) > 1e10){
-        std::cout<<"sumSkSkT is ill-conditioned, termininating search."<<std::endl;
+        //std::cout<<"sumSkSkT is ill-conditioned, termininating search."<<std::endl;
         return boost::none;
       }
 
@@ -198,12 +198,12 @@ namespace bloody{
       arma::vec r1, r2, r3;
       double delta;
 
-      std:cout << "begin converge loop: " << std::endl;
+      //std::cout << "begin converge loop: " << std::endl;
 
       while (poseConverged == false & pose_iter_count < maxCount)
       {
 
-        std::cout << "pose_iter_count: " << pose_iter_count << std::endl;
+        //std::cout << "pose_iter_count: " << pose_iter_count << std::endl;
 
         arma::vec weightedUi(4, arma::fill::zeros) ;
         arma::vec weightedVi(4, arma::fill::zeros) ;
@@ -226,7 +226,7 @@ namespace bloody{
         X.col(0) = r1T(arma::span(0,2));
         X.col(1) = r2T(arma::span(0,2));
 
-        std::cout << "svd " <<std::endl;
+        //std::cout << "svd " <<std::endl;
         arma::svd(U,s,V, X);
 
         arma::mat A = U * arma::mat("1 0; 0 1; 0 0") * V.t();
@@ -240,21 +240,21 @@ namespace bloody{
         Ty = r2T(3) * Tz;
         auto r3T= arma::vec{r3[0], r3[1], r3[2], Tz};
 
-        std::cout << "svd " << std::endl << A << r1 << r2 << r3 << Tx << Ty << Tz << std::endl;
+        //std::cout << "svd " << std::endl << A << r1 << r2 << r3 << Tx << Ty << Tz << std::endl;
 
         r1T = arma::vec{r1[0], r1[1], r1[2], Tx}/Tz;
         r2T = arma::vec{r2[0], r2[1], r2[2], Ty}/Tz;
-        std::cout << "r1T, r2T update: " << r1T << std::endl << r2T << std::endl;
+        //std::cout << "r1T, r2T update: " << r1T << std::endl << r2T << std::endl;
 
         wk = homogeneousWorldPts * r3T /Tz; //line 11 paper pseudocode
 
-        std::cout << "delta " << std::endl;
+        //std::cout << "delta " << std::endl;
         delta = sqrt(arma::accu(assignMat.submat(0, 0, nbImagePts-1, nbWorldPts-1) % distMat)/nbWorldPts);
         poseConverged = delta < maxDelta;
 
-        std::cout << "pose converged: " << poseConverged << std::endl;
+        //std::cout << "pose converged: " << poseConverged << std::endl;
 
-        std::cout << "generate trace " << std::endl;
+        //std::cout << "generate trace " << std::endl;
 
         auto trace = std::vector<double>{
           beta ,delta ,double(numMatchPts)/nbWorldPts ,
@@ -262,7 +262,7 @@ namespace bloody{
           arma::accu(arma::square(r1T-r1Tprev)) + arma::accu(arma::square(r2T-r2Tprev))
         };
 
-        std::cout << "keep log " << std::endl;
+        //std::cout << "keep log " << std::endl;
         stats.push_back(arma::vec( trace));
 
         pose_iter_count = pose_iter_count + 1;
@@ -279,13 +279,13 @@ namespace bloody{
 
       foundPose = (delta < maxDelta && betaCount > minBetaCount);
 
-      std::cout << "updated pose: " << std::endl << pose.rot << std::endl << pose.trans << std::endl;
+      //std::cout << "updated pose: " << std::endl << pose.rot << std::endl << pose.trans << std::endl;
       //%% Log:
-      std::cout << "converge loop ends: " << std::endl;
-      std::cout << boost::format("pose found:%1%, delta exit:%2%, count exit:%3%") % foundPose % (delta<maxDelta) % (betaCount>minBetaCount) << std::endl;
+      //std::cout << "converge loop ends: " << std::endl;
+      //std::cout << boost::format("pose found:%1%, delta exit:%2%, count exit:%3%") % foundPose % (delta<maxDelta) % (betaCount>minBetaCount) << std::endl;
     }
 
-    std::cout << "pose converged: " << std::endl << pose.rot << pose.trans << std::endl;
+    //std::cout << "pose converged: " << std::endl << pose.rot << pose.trans << std::endl;
     return make_tuple(pose, match_type());
   }
 
@@ -334,7 +334,7 @@ namespace bloody{
     arma::umat posmax;
     arma::mat ratios;
     std::tie(posmax, ratios) = maxPosRatio(M);
-    std::cout << "postmax, rations " << posmax << std::endl << ratios << std::endl;
+    //std::cout << "postmax, rations " << posmax << std::endl << ratios << std::endl;
 
     while(fabs(fMdiffSum) > fEpsilon2 && iNumSinkIter < iMaxIterSinkhorn)
     {
