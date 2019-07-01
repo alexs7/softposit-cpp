@@ -7,7 +7,7 @@
 int main()
 {
   std::string name;
-  std::cout<<"hello, "<<name<<std::endl;
+  std::cout <<"hello, " << name << std::endl;
 
   std::vector<bloody::point2di_type> imagePts;
   std::vector<bloody::point3d_type> worldPts;
@@ -29,7 +29,6 @@ int main()
     imagePts.push_back(bloody::point2di_type{raw_imagePts[i], raw_imagePts[i+1]});
   }
 
-
   std::vector<double> raw_worldPts{ -3.7500,
       0,
       0.5000,
@@ -50,7 +49,7 @@ int main()
       -0.7500
       };
 
-  std::cout<<"loading world points"<<std::endl;
+  std::cout << "loading world points" << std::endl;
   for (uint i=0u; i<raw_worldPts.size(); i+=3){
     worldPts.push_back(bloody::point3d_type{raw_worldPts[i], raw_worldPts[i+1], raw_worldPts[i+2]});
   }
@@ -76,9 +75,8 @@ int main()
     std::cout<<pose.rot<<std::endl;
     std::cout<<pose.trans<<std::endl;
   }else{
-    std::cout<<"failed"<<std::endl;
+    std::cout << "failed" << std::endl;
   }
 
   return 0;
-
 }

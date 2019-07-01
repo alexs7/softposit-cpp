@@ -203,6 +203,8 @@ namespace bloody{
       while (poseConverged == false & pose_iter_count < maxCount)
       {
 
+        std::cout << "pose_iter_count: " << pose_iter_count << std::endl;
+
         arma::vec weightedUi(4, arma::fill::zeros) ;
         arma::vec weightedVi(4, arma::fill::zeros) ;
 
@@ -213,8 +215,9 @@ namespace bloody{
           }
         }
 
-        r1T= objectMat * weightedUi;
-        r2T = objectMat * weightedVi;
+        //objectMat = L^-1
+        r1T= objectMat * weightedUi; //line 6 from paper pseudocode
+        r2T = objectMat * weightedVi; //line 7 from paper pseudocode
 
         arma::mat U, V;
         arma::vec s;
@@ -223,7 +226,7 @@ namespace bloody{
         X.col(0) = r1T(arma::span(0,2));
         X.col(1) = r2T(arma::span(0,2));
 
-        std::cout<<"svd"<<std::endl;
+        std::cout << "svd " <<std::endl;
         arma::svd(U,s,V, X);
 
         arma::mat A = U * arma::mat("1 0; 0 1; 0 0") * V.t();
@@ -237,21 +240,21 @@ namespace bloody{
         Ty = r2T(3) * Tz;
         auto r3T= arma::vec{r3[0], r3[1], r3[2], Tz};
 
-        std::cout<<"svd"<<std::endl<<A<<r1<<r2<<r3<<Tx<<Ty<<Tz<<std::endl;
+        std::cout << "svd " << std::endl << A << r1 << r2 << r3 << Tx << Ty << Tz << std::endl;
 
         r1T = arma::vec{r1[0], r1[1], r1[2], Tx}/Tz;
         r2T = arma::vec{r2[0], r2[1], r2[2], Ty}/Tz;
-        std::cout<<"r1T, r2T update: "<<r1T<< std::endl<<r2T<<std::endl;
+        std::cout << "r1T, r2T update: " << r1T << std::endl << r2T << std::endl;
 
-        wk = homogeneousWorldPts * r3T /Tz;
+        wk = homogeneousWorldPts * r3T /Tz; //line 11 paper pseudocode
 
-        std::cout<<"delta"<<std::endl;
+        std::cout << "delta " << std::endl;
         delta = sqrt(arma::accu(assignMat.submat(0, 0, nbImagePts-1, nbWorldPts-1) % distMat)/nbWorldPts);
         poseConverged = delta < maxDelta;
 
-        std::cout<<"pose converged:"<<poseConverged<<std::endl;
+        std::cout << "pose converged: " << poseConverged << std::endl;
 
-        std::cout<<"generate trace"<<std::endl;
+        std::cout << "generate trace " << std::endl;
 
         auto trace = std::vector<double>{
           beta ,delta ,double(numMatchPts)/nbWorldPts ,
@@ -259,7 +262,7 @@ namespace bloody{
           arma::accu(arma::square(r1T-r1Tprev)) + arma::accu(arma::square(r2T-r2Tprev))
         };
 
-        std::cout<<"keep log"<<std::endl;
+        std::cout << "keep log " << std::endl;
         stats.push_back(arma::vec( trace));
 
         pose_iter_count = pose_iter_count + 1;
@@ -276,15 +279,17 @@ namespace bloody{
 
       foundPose = (delta < maxDelta && betaCount > minBetaCount);
 
-      std::cout<<"updated pose:"<<std::endl<<pose.rot<<std::endl<<pose.trans<<std::endl;
+      std::cout << "updated pose: " << std::endl << pose.rot << std::endl << pose.trans << std::endl;
       //%% Log:
-      std::cout<<"converge loop ends"<<std::endl;
-      std::cout<<boost::format("pose found:%1%, delta exit:%2%, count exit:%3%")%foundPose%(delta<maxDelta)%(betaCount>minBetaCount)<<std::endl;
+      std::cout << "converge loop ends: " << std::endl;
+      std::cout << boost::format("pose found:%1%, delta exit:%2%, count exit:%3%") % foundPose % (delta<maxDelta) % (betaCount>minBetaCount) << std::endl;
     }
 
-    std::cout<<"pose converged:"<<std::endl << pose.rot<<pose.trans<<std::endl;
+    std::cout << "pose converged: " << std::endl << pose.rot << pose.trans << std::endl;
     return make_tuple(pose, match_type());
   }
+
+
 
   int numMatches(arma::mat assignMat)
   {
@@ -401,70 +406,4 @@ namespace bloody{
 
     return std::make_tuple(pos, ratios);
   }
-
-  void softposit(float* rot, float* trans, int* foundPose, int* _imagePts, float* _worldPts, int nbImagePts, int nbWorldPts, float beta0, float noiseStd, float* initRot, float* initTrans, float* focalLength, int* center)
-  {
-
-    std::vector<point2di_type> imagePts;
-    std::vector<point3d_type> worldPts;
-
-    for (uint i=0u; i<nbImagePts; ++i){
-      imagePts.push_back(point2di_type{_imagePts[i*2], _imagePts[i*2+1]});
-    }
-    for (uint i=0u; i<nbWorldPts; ++i){
-      worldPts.push_back(point3d_type{_worldPts[i*3], _worldPts[3*i+1], _worldPts[3*i+2]});
-    }
-
-    Pose_type initpose;
-    for (int i=0,k=0; i<3; ++i){
-      for (int j=0; j<3; ++j){
-        initpose.rot(i,j) = initRot[k++];
-      }
-    }
-    initpose.trans = point3d_type{initTrans[0], initTrans[1], initTrans[2]};
-
-    Param_type param{beta0, noiseStd};
-    if (focalLength){
-      CamInfo_type caminfo{*focalLength, point2di_type{*center, *(center+1)}};
-      auto maybe_result = softposit(imagePts, worldPts, param, initpose, caminfo);
-    }else{
-      auto maybe_result = softposit(imagePts, worldPts, param, initpose, boost::none);
-    }
-  }
-
-  // arma::mat sinkhornSlack(arma::mat M)
-  // {
-  //   arma::mat normalizedMat ;
-  //   auto iMaxIterSinkhorn=60;  // In PAMI paper
-  //   auto fEpsilon2 = 0.001; // Used in termination of Sinkhorn Loop.
-  //
-  //   auto iNumSinkIter = 0;
-  //   int nbRows = M.n_rows;
-  //   int nbCols = M.n_cols;
-  //
-  //   auto fMdiffSum = fEpsilon2 + 1;
-  //
-  //   while(fabs(fMdiffSum) > fEpsilon2 && iNumSinkIter < iMaxIterSinkhorn){
-  //     auto Mprev = M; // % Save M from previous iteration to test for loop termination
-  //
-  //     // Col normalization (except outlier row - do not normalize col slacks against each other)
-  //     arma::rowvec McolSums = arma::sum(M); // Row vector.
-  //     McolSums(nbCols-1) = 1; // Don't normalize slack col terms against each other.
-  //     auto McolSumsRep = arma::ones<arma::vec>(nbRows) * McolSums ;
-  //     M = M / McolSumsRep;
-  //
-  //     // Row normalization (except outlier row - do not normalize col slacks against each other)
-  //     arma::colvec MrowSums = arma::sum(M, 1); // Column vector.
-  //     MrowSums(nbRows-1) = 1; // Don't normalize slack row terms against each other.
-  //     auto MrowSumsRep = MrowSums * arma::ones<arma::rowvec>(nbCols);
-  //     M = M / MrowSumsRep;
-  //
-  //     iNumSinkIter=iNumSinkIter+1;
-  //     fMdiffSum=arma::accu(arma::abs(M-Mprev));
-  //   }
-  //
-  //   normalizedMat = M;
-  //
-  //   return normalizedMat;
-  // }
 }
