@@ -186,6 +186,7 @@ namespace bloody{
       }
 
       arma::mat objectMat = arma::inv(sumSkSkT); // Inv(L), a 4x4 matrix.
+
       poseConverged = 0;                         // Initialize for POSIT loop.
       auto pose_iter_count = 0;
 
